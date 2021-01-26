@@ -11,8 +11,13 @@ import org.springframework.web.bind.annotation.RestController
 @CrossOrigin
 @RequestMapping("/")
 class ApiController {
+    @GetMapping("")
+    fun homeResponse(): Response<MessageResponse> {
+        return Response(MessageResponse(message = "Vevericka Post Service Home"))
+    }
+
     @GetMapping("api")
     fun apiResponse(): Response<MessageResponse> {
-        return Response(MessageResponse(message = "Vevericka Post Service"))
+        return Response(MessageResponse(message = "Vevericka Post Service API"))
     }
 }
