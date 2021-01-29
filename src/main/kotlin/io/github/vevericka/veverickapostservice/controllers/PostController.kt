@@ -3,12 +3,14 @@ package io.github.vevericka.veverickapostservice.controllers
 import io.github.vevericka.veverickapostservice.model.Comment
 import io.github.vevericka.veverickapostservice.responses.ApiResponse.Response
 import io.github.vevericka.veverickapostservice.model.Post
+import io.github.vevericka.veverickapostservice.model.userinfoservice.UserInfoServiceUserResponse
 import io.github.vevericka.veverickapostservice.repositories.CommentRepository
 import io.github.vevericka.veverickapostservice.repositories.PostRepository
 import io.github.vevericka.veverickapostservice.responses.ApiResponse
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.data.repository.findByIdOrNull
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.client.RestTemplate
 
 @RestController
 @CrossOrigin
@@ -19,6 +21,8 @@ class PostController {
 
     @Autowired
     private lateinit var commentRepository: CommentRepository
+
+    private val restTemplate = RestTemplate()
 
     @GetMapping("/{id}")
     fun getPostById(@PathVariable("id") id: String): Response<Post?> {
@@ -32,11 +36,23 @@ class PostController {
 
     @GetMapping("/feed/{username}")
     fun getUserFeed(@PathVariable("username") username: String): Response<List<Post>> {
-        // val userFollowing = userInfoService.getUserFollowers(username)
-        val userFollowing = emptyList<String>()
-        val feedPosts = postRepository.findAllById(userFollowing)
-        val userPosts = postRepository.findAll().filter { it.username == username }
-        val posts = (feedPosts + userPosts).sortedByDescending { it.date }
+        val baseUrl = "https://user-info-service.herokuapp.com/user/username"
+        val userUrl = "${baseUrl}/${username}"
+
+        val userResponse = restTemplate.getForObject(userUrl, UserInfoServiceUserResponse::class.java)
+        val following = userResponse?.user?.first()?.following ?: emptyList()
+
+        val followingUsernames = following.mapNotNull {
+            restTemplate.getForObject("${baseUrl}/${it}", UserInfoServiceUserResponse::class.java)
+                ?.user
+                ?.first()
+                ?.username
+        }
+
+        val posts = postRepository.findAll()
+            .filter { it.username == username || it.username in followingUsernames }
+            .sortedByDescending { it.date }
+
         return Response(posts)
     }
 
@@ -48,14 +64,14 @@ class PostController {
     @PutMapping("/{id}")
     fun updatePost(@RequestBody post: Post, @PathVariable("id") id: String): Response<Post> {
         return Response(postRepository.findById(id)
-                .map {
-                    post.id = id
-                    postRepository.save(post)
-                }
-                .orElseGet {
-                    post.id = id
-                    postRepository.save(post)
-                }
+            .map {
+                post.id = id
+                postRepository.save(post)
+            }
+            .orElseGet {
+                post.id = id
+                postRepository.save(post)
+            }
         )
     }
 
@@ -70,7 +86,7 @@ class PostController {
             commentRepository.deleteById(id)
             val postId = comment.postId
             postRepository.findById(postId).map { post ->
-                post.comments = post.comments.filter { it != id}
+                post.comments = post.comments.filter { it != id }
                 postRepository.save(post)
             }
         }
