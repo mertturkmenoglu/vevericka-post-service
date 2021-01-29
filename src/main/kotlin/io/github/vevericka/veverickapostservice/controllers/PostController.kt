@@ -36,21 +36,11 @@ class PostController {
 
     @GetMapping("/feed/{username}")
     fun getUserFeed(@PathVariable("username") username: String): Response<List<Post>> {
-        val baseUrl = "https://user-info-service.herokuapp.com/user/username"
-        val userUrl = "${baseUrl}/${username}"
-
-        val userResponse = restTemplate.getForObject(userUrl, UserInfoServiceUserResponse::class.java)
+        val url = "https://user-info-service.herokuapp.com/user/username/$username"
+        val userResponse = restTemplate.getForObject(url, UserInfoServiceUserResponse::class.java)
         val following = userResponse?.user?.first()?.following ?: emptyList()
-
-        val followingUsernames = following.mapNotNull {
-            restTemplate.getForObject("${baseUrl}/${it}", UserInfoServiceUserResponse::class.java)
-                ?.user
-                ?.first()
-                ?.username
-        }
-
         val posts = postRepository.findAll()
-            .filter { it.username == username || it.username in followingUsernames }
+            .filter { it.username == username || it.username in following }
             .sortedByDescending { it.date }
 
         return Response(posts)
