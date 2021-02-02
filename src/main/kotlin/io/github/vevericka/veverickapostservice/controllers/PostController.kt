@@ -31,7 +31,11 @@ class PostController {
 
     @GetMapping("/user/{username}")
     fun getUserPosts(@PathVariable("username") username: String): Response<List<Post>> {
-        return Response(postRepository.findAll().filter { it.username == username })
+        val posts = postRepository.findAll()
+            .filter { it.username == username }
+            .sortedByDescending { it.date }
+
+        return Response(posts)
     }
 
     @GetMapping("/feed/{username}")
