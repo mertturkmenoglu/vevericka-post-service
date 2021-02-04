@@ -71,6 +71,12 @@ class PostController {
 
     @DeleteMapping("/{id}")
     fun deletePost(@PathVariable("id") id: String) {
+        postRepository.findById(id).ifPresent {
+            for (comment in it.comments) {
+                commentRepository.deleteById(comment)
+            }
+        }
+
         postRepository.deleteById(id)
     }
 
