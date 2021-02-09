@@ -52,6 +52,12 @@ class PostController {
 
     @PostMapping("/")
     fun createPost(@RequestBody post: Post) {
+        val usernameRegex = "@[A-Za-z0-9_]+".toRegex()
+        val hashtagRegex = "#[A-Za-z0-9_]+".toRegex()
+
+        post.mentions = usernameRegex.findAll(post.content).map { it.value }.toList()
+        post.hashtags = hashtagRegex.findAll(post.content).map { it.value }.toList()
+
         postRepository.save(post)
     }
 
